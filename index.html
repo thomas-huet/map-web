@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f4f2">
+<title>Map</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+:root{
+  --surface:#ffffff; --ink:#1d2327; --muted:#69737a; --line:#dde1e3; --accent:#0b6bcb; --hover:#eef1f2;
+  --shadow:0 1px 2px rgba(0,0,0,.18),0 2px 10px rgba(0,0,0,.12);
+  --gap:12px; --size:44px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --surface:#22282c; --ink:#e8ecee; --muted:#9aa5ab; --line:#363e43; --accent:#5aa8ff; --hover:#2d353a;
+    --shadow:0 1px 2px rgba(0,0,0,.5),0 2px 10px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--surface);color:var(--ink);
+  font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#map{position:fixed;inset:0}
+button{font:inherit;color:inherit;cursor:pointer}
+.ctl{position:fixed;z-index:5}
+.tl{top:calc(var(--gap) + env(safe-area-inset-top,0px));left:calc(var(--gap) + env(safe-area-inset-left,0px))}
+.tr{top:calc(var(--gap) + env(safe-area-inset-top,0px));right:calc(var(--gap) + env(safe-area-inset-right,0px))}
+.br{bottom:calc(var(--gap) + env(safe-area-inset-bottom,0px));right:calc(var(--gap) + env(safe-area-inset-right,0px))}
+.ib{width:var(--size);height:var(--size);display:grid;place-items:center;border:0;background:var(--surface);
+  border-radius:12px;box-shadow:var(--shadow);padding:0}
+.ib:hover{background:var(--hover)}
+.ib:focus-visible,input:focus-visible,.opt:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.ib svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ib.on{color:var(--accent)}
+
+/* Search */
+#search{display:flex;flex-direction:column;align-items:flex-start}
+#bar{display:flex;align-items:center;height:var(--size);width:var(--size);overflow:hidden;background:var(--surface);
+  border-radius:12px;box-shadow:var(--shadow);transition:width .22s ease}
+#search.open #bar{width:min(380px,calc(100vw - 2*var(--gap) - var(--size) - 8px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)))}
+#bar .ib{box-shadow:none;flex:none;background:transparent}
+#q{flex:1;min-width:0;height:100%;border:0;background:transparent;color:inherit;font:inherit;font-size:16px;padding:0 4px;outline-offset:-2px}
+#bar>*:not(#sbtn){visibility:hidden}
+#search.open #bar>*{visibility:visible}
+#results{list-style:none;margin:8px 0 0;padding:4px;background:var(--surface);border-radius:12px;box-shadow:var(--shadow);
+  width:min(380px,calc(100vw - 2*var(--gap) - var(--size) - 8px));max-height:50vh;overflow:auto;display:none}
+#results.show{display:block}
+#results li button{display:block;width:100%;text-align:left;border:0;background:none;padding:9px 10px;border-radius:8px}
+#results li button:hover,#results li button:focus-visible{background:var(--hover)}
+#results small{display:block;color:var(--muted)}
+#results .msg{padding:9px 10px;color:var(--muted)}
+
+/* Layers */
+#layers{display:flex;flex-direction:column;align-items:flex-end}
+#panel{display:none;margin-top:8px;background:var(--surface);border-radius:12px;box-shadow:var(--shadow);padding:8px;
+  width:min(280px,calc(100vw - 2*var(--gap)));max-height:70vh;overflow:auto}
+#panel.show{display:block}
+#panel h2{font-size:13px;font-weight:600;color:var(--muted);margin:10px 8px 4px}
+#panel h2:first-child{margin-top:4px}
+.opt{display:flex;gap:10px;align-items:center;padding:8px;border-radius:8px;cursor:pointer}
+.opt:hover{background:var(--hover)}
+.opt input{accent-color:var(--accent);margin:0}
+
+/* Nav */
+#nav{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.zoom{display:flex;flex-direction:column;background:var(--surface);border-radius:12px;box-shadow:var(--shadow)}
+.zoom .ib{box-shadow:none;border-radius:12px 12px 0 0}
+.zoom .ib+.ib{border-radius:0 0 12px 12px;border-top:1px solid var(--line)}
+#north{display:none}
+#north.show{display:grid}
+#needle{transition:none}
+
+#net{position:fixed;z-index:6;left:50%;transform:translateX(-50%);top:calc(var(--gap) + env(safe-area-inset-top,0px));
+  background:var(--ink);color:var(--surface);padding:6px 12px;border-radius:999px;font-size:13px;display:none;pointer-events:none}
+#net.show{display:block}
+body:has(#search.open) #net{top:calc(var(--gap) + var(--size) + 8px + env(safe-area-inset-top,0px))}
+.me{width:18px;height:18px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25),0 1px 6px rgba(0,0,0,.4)}
+.maplibregl-ctrl-attrib{font-size:11px}
+@media (prefers-reduced-motion:reduce){#bar{transition:none}}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="ctl tl" id="search">
+  <form id="bar" role="search">
+    <button type="button" class="ib" id="sbtn" aria-label="Search" aria-expanded="false">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    </button>
+    <input id="q" type="search" placeholder="Search for a place" autocomplete="off" aria-label="Search for a place">
+    <button type="button" class="ib" id="sclose" aria-label="Close search">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </form>
+  <ul id="results" aria-live="polite"></ul>
+</div>
+
+<div class="ctl tr" id="layers">
+  <button class="ib" id="lbtn" aria-label="Map layers" aria-expanded="false">
+    <svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg>
+  </button>
+  <div id="panel" role="radiogroup" aria-label="Map layer"></div>
+</div>
+
+<div class="ctl br" id="nav">
+  <button class="ib" id="north" aria-label="Reset north to up">
+    <svg viewBox="0 0 24 24" id="needle"><path d="M12 3 7.5 12h9L12 3Z" fill="#d63a2f" stroke="#d63a2f"/><path d="M7.5 12 12 21l4.5-9" /></svg>
+  </button>
+  <button class="ib" id="loc" aria-label="Show my location">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+  </button>
+  <div class="zoom">
+    <button class="ib" id="zin" aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="ib" id="zout" aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+  </div>
+</div>
+
+<div id="net">Offline: showing saved map tiles</div>
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+// ---------- Layer catalogue ----------
+const IGN = (layer, fmt) => `https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${layer}&STYLE=normal&FORMAT=image/${fmt}&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}`;
+const ES = (path, layer, fmt) => `https://www.ign.es/wmts/${path}?service=WMTS&request=GetTile&version=1.0.0&layer=${layer}&style=default&format=image/${fmt}&tilematrixset=GoogleMapsCompatible&TileMatrix={z}&TileRow={y}&TileCol={x}`;
+const CH = (layer, ext) => `https://wmts.geo.admin.ch/1.0.0/${layer}/default/current/3857/{z}/{x}/{y}.${ext}`;
+
+const LAYERS = [
+  { id:'base', group:'Base', name:'OpenFreeMap' },
+  { id:'fr-topo', group:'France', name:'IGN Topo (Scan 25)', url:IGN('GEOGRAPHICALGRIDSYSTEMS.MAPS','jpeg'), max:18, bounds:[-5.6,41.2,10,51.2], attr:'© IGN' },
+  { id:'fr-ortho', group:'France', name:'IGN Aerial photos', url:IGN('ORTHOIMAGERY.ORTHOPHOTOS','jpeg'), max:19, bounds:[-5.6,41.2,10,51.2], attr:'© IGN' },
+  { id:'ch-topo', group:'Switzerland', name:'swisstopo Landeskarte', url:CH('ch.swisstopo.pixelkarte-farbe','jpeg'), max:18, bounds:[5.9,45.8,10.6,47.85], attr:'© swisstopo' },
+  { id:'ch-ortho', group:'Switzerland', name:'swisstopo Aerial photos', url:CH('ch.swisstopo.swissimage','jpeg'), max:19, bounds:[5.9,45.8,10.6,47.85], attr:'© swisstopo' },
+  { id:'es-topo', group:'Spain', name:'IGN España Topo (MTN)', url:ES('mapa-raster','MTN','jpeg'), max:17, bounds:[-18.5,27.5,4.5,44], attr:'© Instituto Geográfico Nacional de España' },
+  { id:'es-ortho', group:'Spain', name:'IGN España Aerial (PNOA)', url:ES('pnoa-ma','OI.OrthoimageCoverage','jpeg'), max:19, bounds:[-18.5,27.5,4.5,44], attr:'© IGN España · PNOA' },
+];
+
+// ---------- Saved state ----------
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const view = store.get('view', { center:[4, 46], zoom:4.5, bearing:0 });
+let current = store.get('layer', 'base');
+if (!LAYERS.some(l => l.id === current)) current = 'base';
+
+// ---------- Map ----------
+const map = new maplibregl.Map({
+  container:'map',
+  style:'https://tiles.openfreemap.org/styles/liberty',
+  center:view.center, zoom:view.zoom, bearing:view.bearing||0,
+  attributionControl:false, maxPitch:60
+});
+map.addControl(new maplibregl.AttributionControl({ compact:true }), 'bottom-left');
+
+map.on('load', () => {
+  for (const l of LAYERS.filter(l => l.url)) {
+    map.addSource(l.id, { type:'raster', tiles:[l.url], tileSize:256, maxzoom:l.max, bounds:l.bounds, attribution:l.attr });
+    map.addLayer({ id:l.id, type:'raster', source:l.id, layout:{ visibility:'none' } });
+  }
+  setLayer(current);
+});
+map.on('moveend', () => {
+  const c = map.getCenter();
+  store.set('view', { center:[+c.lng.toFixed(5), +c.lat.toFixed(5)], zoom:+map.getZoom().toFixed(2), bearing:+map.getBearing().toFixed(1) });
+});
+
+function setLayer(id){
+  current = id; store.set('layer', id);
+  for (const l of LAYERS.filter(l => l.url)) map.setLayoutProperty(l.id, 'visibility', l.id === id ? 'visible' : 'none');
+  document.querySelectorAll('#panel input').forEach(i => i.checked = i.value === id);
+}
+
+// ---------- Layer panel ----------
+const $ = s => document.querySelector(s);
+const panel = $('#panel');
+let lastGroup = '';
+for (const l of LAYERS) {
+  if (l.group !== lastGroup) { panel.insertAdjacentHTML('beforeend', `<h2>${l.group}</h2>`); lastGroup = l.group; }
+  const row = document.createElement('label');
+  row.className = 'opt';
+  row.innerHTML = `<input type="radio" name="layer" value="${l.id}"${l.id === current ? ' checked' : ''}><span>${l.name}</span>`;
+  row.querySelector('input').addEventListener('change', () => setLayer(l.id));
+  panel.append(row);
+}
+const lbtn = $('#lbtn');
+function togglePanel(open){ panel.classList.toggle('show', open); lbtn.setAttribute('aria-expanded', open); }
+lbtn.onclick = () => togglePanel(!panel.classList.contains('show'));
+map.on('mousedown', () => togglePanel(false));
+map.on('touchstart', () => togglePanel(false));
+
+// ---------- Navigation ----------
+$('#zin').onclick = () => map.zoomIn();
+$('#zout').onclick = () => map.zoomOut();
+$('#north').onclick = () => map.easeTo({ bearing:0, pitch:0 });
+const north = $('#north'), needle = $('#needle');
+function syncNorth(){
+  const b = map.getBearing();
+  north.classList.toggle('show', Math.abs(b) > 0.5 || map.getPitch() > 0.5);
+  needle.style.transform = `rotate(${-b}deg)`;
+}
+map.on('rotate', syncNorth); map.on('pitch', syncNorth); map.on('load', syncNorth);
+
+// ---------- Geolocation ----------
+let watchId = null, marker = null, lastPos = null, centerNext = false;
+const loc = $('#loc');
+loc.onclick = () => {
+  if (!navigator.geolocation) return alert('Geolocation is not available in this browser.');
+  centerNext = true;
+  if (lastPos) return flyToMe();
+  watchId = navigator.geolocation.watchPosition(p => {
+    lastPos = [p.coords.longitude, p.coords.latitude];
+    if (!marker) { const el = document.createElement('div'); el.className = 'me'; marker = new maplibregl.Marker({ element:el }).setLngLat(lastPos).addTo(map); }
+    else marker.setLngLat(lastPos);
+    loc.classList.add('on');
+    if (centerNext) flyToMe();
+  }, err => { loc.classList.remove('on'); alert('Could not get your position: ' + err.message); lastPos = null; navigator.geolocation.clearWatch(watchId); }, { enableHighAccuracy:true, maximumAge:5000 });
+};
+function flyToMe(){ centerNext = false; map.flyTo({ center:lastPos, zoom:Math.max(map.getZoom(), 15) }); }
+
+// ---------- Search (Nominatim) ----------
+const search = $('#search'), q = $('#q'), results = $('#results'), sbtn = $('#sbtn');
+let pin = null;
+function openSearch(open){
+  search.classList.toggle('open', open);
+  sbtn.setAttribute('aria-expanded', open);
+  if (open) { q.focus(); } else { results.classList.remove('show'); results.innerHTML = ''; q.value = ''; }
+}
+sbtn.onclick = () => openSearch(!search.classList.contains('open') || (q.focus(), false));
+$('#sclose').onclick = () => openSearch(false);
+q.addEventListener('keydown', e => { if (e.key === 'Escape') openSearch(false); });
+$('#bar').addEventListener('submit', async e => {
+  e.preventDefault();
+  const text = q.value.trim(); if (!text) return;
+  results.classList.add('show'); results.innerHTML = '<li class="msg">Searching…</li>';
+  try {
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=' + encodeURIComponent(text));
+    const data = await r.json();
+    if (!data.length) { results.innerHTML = '<li class="msg">No places found. Try another spelling.</li>'; return; }
+    results.innerHTML = '';
+    for (const p of data) {
+      const [main, ...rest] = p.display_name.split(', ');
+      const li = document.createElement('li');
+      li.innerHTML = '<button type="button"></button>';
+      const b = li.firstChild; b.textContent = main;
+      const s = document.createElement('small'); s.textContent = rest.join(', '); b.append(s);
+      b.onclick = () => goTo(p);
+      results.append(li);
+    }
+  } catch {
+    results.innerHTML = '<li class="msg">Search needs a connection. Try again when you are online.</li>';
+  }
+});
+function goTo(p){
+  const [s, n, w, e] = p.boundingbox.map(Number);
+  if (pin) pin.remove();
+  pin = new maplibregl.Marker({ color:'#d63a2f' }).setLngLat([+p.lon, +p.lat]).addTo(map);
+  map.fitBounds([[w, s], [e, n]], { padding:60, maxZoom:17 });
+  results.classList.remove('show');
+  if (matchMedia('(max-width:600px)').matches) openSearch(false);
+}
+
+// ---------- Offline ----------
+const net = $('#net');
+const syncNet = () => net.classList.toggle('show', !navigator.onLine);
+addEventListener('online', syncNet); addEventListener('offline', syncNet); syncNet();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
