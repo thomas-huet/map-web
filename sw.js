@@ -1,11 +1,12 @@
 // Offline cache: app shell + every map resource you have already viewed.
-const SHELL = 'shell-v3';
+const SHELL = 'shell-v4';
 const TILES = 'tiles-v1';
 const MAX_TILES = 12000; // oldest entries are dropped beyond this
 const CDN = [
   'https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js',
   'https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css',
-  'https://cdn.jsdelivr.net/npm/maplibre-contour@0.1.0/dist/index.min.js'
+  'https://cdn.jsdelivr.net/npm/maplibre-contour@0.1.0/dist/index.min.js',
+  'https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js'
 ];
 
 self.addEventListener('install', e => {

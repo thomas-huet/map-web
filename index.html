@@ -145,6 +145,8 @@ const view = store.get('view', { center:[4, 46], zoom:4.5 });
 let current = store.get('layer', 'base');
 if (!LAYERS.some(l => l.id === current)) current = 'base';
 
+const RTL_PLUGIN = 'https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js';
+
 // ---------- Contour lines (generated in the browser from open elevation tiles) ----------
 const dem = new mlcontour.DemSource({
   url:'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
@@ -153,11 +155,14 @@ const dem = new mlcontour.DemSource({
 dem.setupMaplibre(maplibregl);
 
 // ---------- Map ----------
+// Shapes Arabic/Hebrew/etc. labels and draws them right to left. Loaded eagerly so the service worker caches it for offline use.
+maplibregl.setRTLTextPlugin(RTL_PLUGIN, false);
 const map = new maplibregl.Map({
   container:'map',
   style:'https://tiles.openfreemap.org/styles/liberty',
   center:view.center, zoom:view.zoom, bearing:0, pitch:0,
-  attributionControl:false, maxPitch:0, dragRotate:false, pitchWithRotate:false
+  attributionControl:false, maxPitch:0, dragRotate:false, pitchWithRotate:false,
+  hash:true // keeps #zoom/lat/lng in the URL; a shared link overrides the saved view
 });
 map.touchZoomRotate.disableRotation();
 map.keyboard.disableRotation();
