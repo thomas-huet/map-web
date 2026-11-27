@@ -1,5 +1,5 @@
 // Offline cache: app shell + every map resource you have already viewed.
-const SHELL = 'shell-v2';
+const SHELL = 'shell-v3';
 const TILES = 'tiles-v1';
 const MAX_TILES = 12000; // oldest entries are dropped beyond this
 const CDN = [
@@ -27,7 +27,6 @@ const isTile = u =>
   u.hostname === 'data.geopf.fr' ||
   u.hostname === 'wmts.geo.admin.ch' ||
   u.hostname === 'www.ign.es' ||
-  u.hostname === 'wms.pcn.minambiente.it' ||
   (u.hostname === 's3.amazonaws.com' && u.pathname.startsWith('/elevation-tiles-prod/'));
 
 const isMeta = u => u.hostname === 'tiles.openfreemap.org'; // style, TileJSON, sprites, fonts
