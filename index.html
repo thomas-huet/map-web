@@ -128,13 +128,13 @@ const ES = (path, layer, fmt) => `https://www.ign.es/wmts/${path}?service=WMTS&r
 const CH = (layer, ext) => `https://wmts.geo.admin.ch/1.0.0/${layer}/default/current/3857/{z}/{x}/{y}.${ext}`;
 
 const LAYERS = [
-  { id:'base', group:'Base', name:'OpenFreeMap' },
-  { id:'fr-topo', group:'France', name:'IGN Topo (Scan 25)', url:IGN_SCAN, max:18, bounds:[-5.6,41.2,10,51.2], attr:'© IGN' },
-  { id:'fr-ortho', group:'France', name:'IGN Aerial photos', url:IGN('ORTHOIMAGERY.ORTHOPHOTOS','jpeg'), max:19, bounds:[-5.6,41.2,10,51.2], attr:'© IGN' },
-  { id:'ch-topo', group:'Switzerland', name:'swisstopo Landeskarte', url:CH('ch.swisstopo.pixelkarte-farbe','jpeg'), max:18, bounds:[5.9,45.8,10.6,47.85], attr:'© swisstopo' },
-  { id:'ch-ortho', group:'Switzerland', name:'swisstopo Aerial photos', url:CH('ch.swisstopo.swissimage','jpeg'), max:19, bounds:[5.9,45.8,10.6,47.85], attr:'© swisstopo' },
-  { id:'es-topo', group:'Spain', name:'IGN España Topo (MTN)', url:ES('mapa-raster','MTN','jpeg'), max:17, bounds:[-18.5,27.5,4.5,44], attr:'© Instituto Geográfico Nacional de España' },
-  { id:'es-ortho', group:'Spain', name:'IGN España Aerial (PNOA)', url:ES('pnoa-ma','OI.OrthoimageCoverage','jpeg'), max:19, bounds:[-18.5,27.5,4.5,44], attr:'© IGN España · PNOA' },
+  { id:'base', name:'OpenStreetMap' },
+  { id:'fr-topo', name:'France Topo', url:IGN_SCAN, max:18, bounds:[-5.6,41.2,10,51.2], attr:'© IGN' },
+  { id:'fr-ortho', name:'France Photos', url:IGN('ORTHOIMAGERY.ORTHOPHOTOS','jpeg'), max:19, bounds:[-5.6,41.2,10,51.2], attr:'© IGN' },
+  { id:'ch-topo', name:'Switzerland Topo', url:CH('ch.swisstopo.pixelkarte-farbe','jpeg'), max:18, bounds:[5.9,45.8,10.6,47.85], attr:'© swisstopo' },
+  { id:'ch-ortho', name:'Switzerland Photos', url:CH('ch.swisstopo.swissimage','jpeg'), max:19, bounds:[5.9,45.8,10.6,47.85], attr:'© swisstopo' },
+  { id:'es-topo', name:'Spain Topo', url:ES('mapa-raster','MTN','jpeg'), max:17, bounds:[-18.5,27.5,4.5,44], attr:'© Instituto Geográfico Nacional de España' },
+  { id:'es-ortho', name:'Spain Photos', url:ES('pnoa-ma','OI.OrthoimageCoverage','jpeg'), max:19, bounds:[-18.5,27.5,4.5,44], attr:'© IGN España · PNOA' },
 ];
 
 // ---------- Saved state ----------
@@ -202,9 +202,7 @@ function setLayer(id){
 // ---------- Layer panel ----------
 const $ = s => document.querySelector(s);
 const panel = $('#panel');
-let lastGroup = '';
 for (const l of LAYERS) {
-  if (l.group !== lastGroup) { panel.insertAdjacentHTML('beforeend', `<h2>${l.group}</h2>`); lastGroup = l.group; }
   const row = document.createElement('label');
   row.className = 'opt';
   row.innerHTML = `<input type="radio" name="layer" value="${l.id}"${l.id === current ? ' checked' : ''}><span>${l.name}</span>`;
@@ -216,7 +214,7 @@ let contoursOn = store.get('contours', false);
 panel.insertAdjacentHTML('beforeend', '<h2>Overlay</h2>');
 const crow = document.createElement('label');
 crow.className = 'opt';
-crow.innerHTML = '<input type="checkbox"><span>Contour lines (worldwide)</span>';
+crow.innerHTML = '<input type="checkbox"><span>Contour lines</span>';
 const cbox = crow.querySelector('input');
 cbox.checked = contoursOn;
 cbox.addEventListener('change', () => setContours(cbox.checked));
